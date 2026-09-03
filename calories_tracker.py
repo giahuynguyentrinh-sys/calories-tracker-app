@@ -1,12 +1,34 @@
-from datetime import date
+from datetime import date, datetime
 import json
 currentuser = None
 class entry():
-    def __init__(self, name,weight, entrydate =None):
+    def __init__(self, name,weight, mealtype, entrydate =None):
         self.name = name
         self.weight = weight
+        self.mealtype = mealtype
         self.date = entrydate if entrydate is not None else date.today()
         entry.macroscaculated(self)
+    def guessmealtype():
+        hour = datetime.now().hour
+        if 5 <= hour <= 10:
+            return "breakfast"
+        elif 10 <= hour <= 14:
+            return "lunch"
+        elif 14 <=  hour <= 17:
+            return "afternoon snack"
+        elif 17 <= hour <= 21:
+            return "dinner"
+        elif hour >= 21 or hour <= 5:
+            return "late snack"
+    def type():
+        default_type = entry.guessmealtype()
+        userinput = input(f"mealtype:[{default_type}] (type enter or type another: )")
+        meal_type = default_type if userinput == "" else userinput
+        return meal_type
+    def datetoobject(date_str):
+        return datetime.strptime(date_str, "%Y%m%d").date()
+    def datetostring(d):
+        return d.strftime("%Y%m%d")
     def macroscaculated(self):
         with open("fooddatabase.json", "r") as f:
             database = json.load(f)
@@ -20,15 +42,17 @@ class entry():
     def todict(self):
         return {
             "name": self.name, 
-            "entrydate": str(self.date),
-            "weight": self.weight
+            "entrydate": entry.datetostring(self.date),
+            "weight": self.weight,
+            "mealtype": self.mealtype
         }
     @classmethod
     def fromdict(cls, data):
         new_entry = cls(
             name = data["name"],
-            entrydate = date.fromisoformat(data["entrydate"]),
+            entrydate = entry.datetoobject(data["date"]),
             weight = data["weight"],
+            mealtype = data["mealtype"]
         )
         return new_entry
     @classmethod
@@ -36,7 +60,8 @@ class entry():
         meal = cls(
             name = input("type food name: "),
             weight = input_float("type weight g: "),
-            entrydate = date.fromisoformat(input("type date (YYYYMMDD): "))
+            entrydate = entry.datetoobject(input("type date (YYYYMMDD): ")),
+            mealtype = entry.type()
         )
         return meal
     
@@ -84,22 +109,22 @@ class user():
             sex = input("female/male: ")
         workout = cls.activity()
         goal = input_int("""
-                            What is your goal?
+What is your goal?
 
-                            1. Lose weight
-                            2. Maintain weight
-                            3. Gain weight
+1. Lose weight
+2. Maintain weight
+3. Gain weight
 
-                            Choose (1-3): """)
+Choose (1-3): """)
         while goal not in [1, 2, 3]:
             goal = int(input("""
-                                What is your goal?
+What is your goal?
 
-                                1. Lose weight
-                                2. Maintain weight
-                                3. Gain weight
+1. Lose weight
+2. Maintain weight
+3. Gain weight
 
-                                Choose (1-3): """))
+Choose (1-3): """)) 
         userstat = cls(
             name = name,
             weight = weight,
@@ -116,25 +141,25 @@ class user():
     @staticmethod
     def activity():
             n = input_int("""
-                    How active are you?
+How active are you?
     
-                    1. Sedentary
-                    Little or no exercise
+1. Sedentary
+Little or no exercise
     
-                    2. Lightly active
-                    Light exercise 1-3 days/week
+2. Lightly active
+Light exercise 1-3 days/week
     
-                    3. Moderately active
-                    Moderate exercise 3-5 days/week
+3. Moderately active
+Moderate exercise 3-5 days/week
     
-                    4. Very active
-                    Hard exercise 6-7 days/week
+4. Very active
+Hard exercise 6-7 days/week
     
-                    5. Extra active
-                    Very hard exercise / physical job
+5. Extra active
+Very hard exercise / physical job
     
-                    Choose (1-5): 
-                    """)
+Choose (1-5): 
+""")
             if n == 1: 
                 return 1.2
             elif n == 2:
@@ -171,7 +196,8 @@ class user():
             proteinneeded = self.weight * 1.4
         elif self.goal == 3:
             proteinneeded = self.weight * 1.6
-        return proteinneeded 
+        return proteinneeded
+
     
  
 #save/load       
@@ -215,7 +241,68 @@ def load_user():
     newuser = user.fromdict(data)
     currentuser = newuser
     return newuser
-
+#subeditmeal()
+def searchandprint(datelogs, mealtype):
+    count = 0
+    for i,log in enumerate(datelogs):
+        count += 1
+        if log["mealtype"] == mealtype:
+            print(count,log)
+        else:
+            print("no meal")
+def editmealmenu():
+    print("""
+What do you want to edit?
+1. Name
+2. Weight
+3. Meal type
+4. Cancel""")
+    userchoice= input_int("type: ")
+    return userchoice
+#editmeal
+def editmeal():
+    date_logs = searchlogbydate()
+    print(f"Today date: {entry.datetoobject(date_logs[0]["date"])}")
+    while n == False:
+        date_logs.sort(key = lambda log: log["mealtype"])
+        print("Breakfast: ")
+        searchandprint(date_logs, "breakfast")
+        print("Lunch: ")
+        searchandprint(date_logs, "lunch")
+        print("Afternoon snack")
+        searchandprint(date_logs, "afternoon snack")
+        print("Dinner")
+        searchandprint(date_logs, "dinner")
+        print("late snack")
+        searchandprint(date_logs, "late snack")
+        while True:
+            usermeal = input_int(f"choose a number or choose {len(date_logs)} to save and exit: ")
+            if usermeal == len(date_logs):
+                print("you exit")
+                n = True
+                break
+            elif usermeal < 0 or usermeal > len(date_logs):
+                print("wrong number")
+                continue
+            else:
+                while True:
+                    userchoice = editmealmenu()
+                    if userchoice == 1:
+                        date_logs[usermeal]["name"] = input("type food name: ")
+                    elif userchoice == 2:
+                        date_logs[usermeal]["weight"] = input_float("type weight: ")
+                    elif userchoice == 3:
+                        date_logs[usermeal]["mealtype"] = entry.type()
+                    elif userchoice ==4:
+                        break
+        with open("log.json", "w") as f:
+            
+        
+        
+    # TODO:
+    # - .sort(), key=, lambda
+    # - meal_order: breakfast -> lunch -> dinner
+    # - sort theo meal_order rồi enumerate để user chọn
 #logic try/except
 def input_float(message):
     while True:
@@ -231,54 +318,89 @@ def input_int(message):
             return print("invalid number")
 log_today = []
 #showing, printing
-def show_menu():
-    print("""
-========================================
-       CALORIE TRACKER - v1
-========================================
-  1. Add meal
-  2. View today's log
-  3. Your stat
-  4. Change your stat
-  5. Save & exit
-========================================
-""")
-    
-def viewtodaylog():
+def viewlog(loglist):
     caloriesneeded = currentuser.caloriesadvice()
     proteineeded = currentuser.proteinadvice()
-    todayprotein = 0
-    todaycalories = 0
-    if len(log_today) == 0:
+    protein = 0
+    calories = 0
+    if len(loglist) == 0:
         print("No log found for today.")
         return
-
     print("Today's food log:")
-    for i, log in enumerate(log_today, start=1):
+    for i, log in enumerate(loglist, start=1):
         print(f"{i}. {log.name} ({log.weight}g)")
-        print(f"   protein: {log.protein:.1f}g, carb: {log.carb:.1f}g, fat: {log.fat:.1f}g, calories: {log.calories:.1f}kcal")
-        todayprotein += log.protein
-        todaycalories += log.calories
-    if todaycalories >= caloriesneeded:
-        print(f"exceeding calories: {todaycalories - caloriesneeded}")
-    if todayprotein >= proteineeded:
-        print(f"exceeding protein: {todayprotein - proteineeded}")
-    if caloriesneeded > todaycalories:
-        print(f"calories left: {caloriesneeded - todaycalories}")
-    if proteineeded > todayprotein:
-        print(f"protein left: {proteineeded - todayprotein}")
-
+        print(f"   protein: {log.protein:.1f}, calories: {log.calories:.1f}kcal")
+        protein += log.protein
+        calories += log.calories
+    print(f"Calories {calories}/{caloriesneeded}kcal")
+    print(f"Protein {protein}/{proteineeded}g")
+    if calories >= caloriesneeded:
+        print(f"Exceeding calories: {calories - caloriesneeded}")
+    if  protein >= proteineeded:
+        print(f"Exceeding protein: {protein - proteineeded}")
+    if caloriesneeded > calories:
+        print(f"Calories left: {caloriesneeded - calories}")
+    if proteineeded > protein:
+        print(f"Protein left: {proteineeded - protein}")
+def searchlogbydate():
+    logs = []
+    with open("log.json", "r") as f:
+        data = json.load(f)
+    userdate = input_int("choose date yyyymmdd: ")
+    userdate = entry.datetoobject(date.today()) if userdate == "" else userdate
+    user_date = entry.datetostring(userdate)
+    while user_date > date.today():
+        print("no future date allow")
+        userdate = input_int("choose date yyyymmdd: ").strip()
+        user_date = entry.datetostring(userdate)
+    if len(data) == 0:
+        print("no log found")
+        return
+    else:
+        for log in data:
+            if log["date"] == user_date:
+                logs.append(log)
+    return logs
 def viewuserstat():
     global currentuser
-    goal_map = {1: "Lose weight", 2: "Maintain weight", 3: "Gain weight"}
-    print(f"Goal: {goal_map[currentuser.goal]}")
     print(f"Name: {currentuser.name}")
     print(f"Age: {currentuser.age}")
     print(f"Weight: {currentuser.weight} kg")
     print(f"Height: {currentuser.height} cm")
     print(f"Sex: {currentuser.sex}")
     print(f"Activity level: {currentuser.workout}")
-    print(f"Goal: {currentuser.goal}")
+    goal_map = {1: "Lose weight", 2: "Maintain weight", 3: "Gain weight"}
+    print(f"Goal: {goal_map[currentuser.goal]}")
+def mealmenu():
+    print("""================================
+          MANAGE MEALS
+================================
+1. Edit meal
+2. Delete meal
+3. Back
+================================""")
+    userchoice = input_int("choose: ")
+    if userchoice == 1:
+            
+def show_menu():
+    goal_map = {1: "Lose weight", 2: "Maintain weight", 3: "Gain weight"}
+    time = date.today()
+
+    print(f"""======================================== 
+          CALORIES TRACKER 
+========================================
+ Day: {time}
+ User: {currentuser.name}
+ Goal: {goal_map[currentuser.goal]}
+ Target: {currentuser.caloriesadvice():.0f} kcal
+---------------------------------------- 
+  1. Manage meal 
+  2. Today's log 
+  3. Search log by date
+  4. View user stats 
+  5. Change profile 
+  6. Save & exit 
+========================================""")
 def main():
     load_user()
     while True:
@@ -288,13 +410,16 @@ def main():
             log = entry.entry_today()
             log_today.append(log)  
         elif userchoice == 2:
-            viewtodaylog()
+            logs = searchlogbydate()
+            viewlog(logs)
         elif userchoice == 3:
-            viewuserstat()
+            searchlogbydate()
         elif userchoice == 4:
-            user.stat()
+            viewuserstat()
         elif userchoice == 5:
+            user.stat()
+        elif userchoice == 6:
             save_user(currentuser)
             save_entry(log_today)
             exit()
-main()        
+            
