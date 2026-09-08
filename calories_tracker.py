@@ -1,6 +1,8 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import json
+import numpy as np
 currentuser = None
+log_today = []
 class entry():
     def __init__(self, name,weight, mealtype, entrydate =None):
         self.name = name
@@ -42,7 +44,7 @@ class entry():
     def todict(self):
         return {
             "name": self.name, 
-            "entrydate": entry.datetostring(self.date),
+            "date": entry.datetostring(self.date),
             "weight": self.weight,
             "mealtype": self.mealtype
         }
@@ -57,10 +59,11 @@ class entry():
         return new_entry
     @classmethod
     def entry_today(cls):
+        userdate = input("type date (YYYYMMDD): ")
         meal = cls(
             name = input("type food name: "),
             weight = input_float("type weight g: "),
-            entrydate = entry.datetoobject(input("type date (YYYYMMDD): ")),
+                entrydate = date.today() if userdate == "" else entry.datetoobject(userdate),
             mealtype = entry.type()
         )
         return meal
@@ -140,36 +143,38 @@ Choose (1-3): """))
         
     @staticmethod
     def activity():
+        n = 0
+        while n not in [1,2,3,4,5]:
             n = input_int("""
-How active are you?
-    
-1. Sedentary
-Little or no exercise
-    
-2. Lightly active
-Light exercise 1-3 days/week
-    
-3. Moderately active
-Moderate exercise 3-5 days/week
-    
-4. Very active
-Hard exercise 6-7 days/week
-    
-5. Extra active
-Very hard exercise / physical job
-    
-Choose (1-5): 
-""")
-            if n == 1: 
-                return 1.2
-            elif n == 2:
-                return 1.375
-            elif n == 3:
-                return 1.55
-            elif n == 4: 
-                return 1.725
-            elif n ==5:
-                return 1.9       
+            How active are you?
+                
+            1. Sedentary
+            Little or no exercise
+                
+            2. Lightly active
+            Light exercise 1-3 days/week
+                
+            3. Moderately active
+            Moderate exercise 3-5 days/week
+                
+            4. Very active
+            Hard exercise 6-7 days/week
+                
+            5. Extra active
+            Very hard exercise / physical job
+                
+            Choose (1-5): 
+            """)
+        if n == 1: 
+            return 1.2
+        elif n == 2:
+            return 1.375
+        elif n == 3:
+            return 1.55
+        elif n == 4: 
+            return 1.725
+        elif n ==5:
+            return 1.9       
     def bmr(self):
         if self.sex == "male":
             bmrscore = 10*self.weight + 6.25*self.height - 5*self.age + 5
@@ -206,7 +211,7 @@ def save_entry(newentry):
         with open("log.json", "r") as f: #mo file log.json luu du lieu
             #file trong do duoi bien "f"
             entries = json.load(f)
-    except FileNotFoundError:
+    except (FileNotFoundError, json.JSONDecodeError):
         entries = [] #neu ko tim thay file entries tu dong tao ra mot entries
         #rong de luu gia tri vao
     if isinstance(newentry, list):
@@ -218,8 +223,12 @@ def save_entry(newentry):
         json.dump(entries, file, indent = 4)
 
 def load_entry():
-    with open("log.json", "r") as file:
-        data = json.load(file)
+    try:
+        with open("log.json", "r") as file:
+            data = json.load(file)
+    except(FileNotFoundError, json.JSONDecodeError):
+        print("no file found")
+        return
     newentries = []
     for newentry in data:
         newentry = entry.fromdict(newentry)
@@ -243,13 +252,11 @@ def load_user():
     return newuser
 #subeditmeal()
 def searchandprint(datelogs, mealtype):
-    count = 0
+    count = -1
     for i,log in enumerate(datelogs):
         count += 1
         if log["mealtype"] == mealtype:
             print(count,log)
-        else:
-            print("no meal")
 def editmealmenu():
     print("""
 What do you want to edit?
@@ -258,11 +265,19 @@ What do you want to edit?
 3. Meal type
 4. Cancel""")
     userchoice= input_int("type: ")
+    while userchoice < 1 or userchoice > 4:
+        userchoice = input_int("type")
     return userchoice
 #editmeal
 def editmeal():
     date_logs = searchlogbydate()
-    print(f"Today date: {entry.datetoobject(date_logs[0]["date"])}")
+    if not date_logs:
+                print("no log found that day")
+                return
+    datetoobject = entry.datetoobject(date_logs[0]["date"])
+    datetostring = date_logs[0]["date"]
+    print(f"date: {datetoobject}")
+    n= False
     while n == False:
         date_logs.sort(key = lambda log: log["mealtype"])
         print("Breakfast: ")
@@ -295,28 +310,72 @@ def editmeal():
                         date_logs[usermeal]["mealtype"] = entry.type()
                     elif userchoice ==4:
                         break
+    with open("log.json", "r") as f:
+        data = json.load(f)
+    new_data = []
+    for log in data:
+        if log["date"] != datetostring:
+            new_data.append(log)
+    for log in date_logs:
+        new_data.append(log)
+    with open("log.json", "w") as f:
+        json.dump(new_data, f, indent = 4)
+
+def deletemeal():
+    date_logs = searchlogbydate()
+    if not date_logs:
+            print("no log found that day")
+            return
+    datetoobject = entry.datetoobject(date_logs[0]["date"])
+    datetostring = date_logs[0]["date"]
+    print(f"date: {datetoobject}")
+    n = False
+    while n == False:
+        date_logs.sort(key = lambda log: log["mealtype"])
+        print("Breakfast: ")
+        searchandprint(date_logs, "breakfast")
+        print("Lunch: ")
+        searchandprint(date_logs, "lunch")
+        print("Afternoon snack")
+        searchandprint(date_logs, "afternoon snack")
+        print("Dinner")
+        searchandprint(date_logs, "dinner")
+        print("late snack")
+        searchandprint(date_logs, "late snack")
+        while True:
+            usermeal = input_int(f"choose a number to delete or choose {len(date_logs)} to save and exit: ")
+            if usermeal == len(date_logs):
+                print("you exit")
+                n = True
+                break
+            elif usermeal < 0 or usermeal > len(date_logs):
+                print("wrong number")
+                continue
+            else:
+                del date_logs[usermeal]
+    with open("log.json", "r") as f:
+        data = json.load(f)
+        new_data = []
+        for log in data:
+            if log["date"] != datetostring:
+                new_data.append(log)
+        for log in date_logs:
+            new_data.append(log)
         with open("log.json", "w") as f:
-            
-        
-        
-    # TODO:
-    # - .sort(), key=, lambda
-    # - meal_order: breakfast -> lunch -> dinner
-    # - sort theo meal_order rồi enumerate để user chọn
-#logic try/except
+            json.dump(new_data, f, indent = 4)
+    
 def input_float(message):
     while True:
         try:
             return float(input(message))
         except ValueError:
-            return print("invalid number")
+            print("invalid number")
 def input_int(message):
     while True:
         try:
             return int(input(message))
         except ValueError:
-            return print("invalid number")
-log_today = []
+            print("invalid number")
 #showing, printing
 def viewlog(loglist):
     caloriesneeded = currentuser.caloriesadvice()
@@ -332,8 +391,6 @@ def viewlog(loglist):
         print(f"   protein: {log.protein:.1f}, calories: {log.calories:.1f}kcal")
         protein += log.protein
         calories += log.calories
-    print(f"Calories {calories}/{caloriesneeded}kcal")
-    print(f"Protein {protein}/{proteineeded}g")
     if calories >= caloriesneeded:
         print(f"Exceeding calories: {calories - caloriesneeded}")
     if  protein >= proteineeded:
@@ -343,24 +400,40 @@ def viewlog(loglist):
     if proteineeded > protein:
         print(f"Protein left: {proteineeded - protein}")
 def searchlogbydate():
-    logs = []
-    with open("log.json", "r") as f:
-        data = json.load(f)
-    userdate = input_int("choose date yyyymmdd: ")
-    userdate = entry.datetoobject(date.today()) if userdate == "" else userdate
-    user_date = entry.datetostring(userdate)
-    while user_date > date.today():
-        print("no future date allow")
-        userdate = input_int("choose date yyyymmdd: ").strip()
-        user_date = entry.datetostring(userdate)
-    if len(data) == 0:
-        print("no log found")
-        return
-    else:
+        logs = []
+        try:
+            with open("log.json", "r") as f:
+                data = json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError):
+            data=[]
+        userinput = input("choose date yyyymmdd: ")
+        userdate = date.today() if userinput == "" else entry.datetoobject(userinput)
+        while userdate > date.today():
+            print("no future date allow")
+            userinput = input("choose date yyyymmdd: ").strip()
+            userdate = entry.datetoobject(userinput)
+        userdatestr = entry.datetostring(userdate)
         for log in data:
-            if log["date"] == user_date:
+            if log["date"] == userdatestr:
                 logs.append(log)
-    return logs
+        return logs
+def printlog(date_logs):
+    if not date_logs:
+        print("no log found that day")
+        return
+    datetoobject = entry.datetoobject(date_logs[0]["date"])
+    print(f"date: {datetoobject}")
+    date_logs.sort(key = lambda log: log["mealtype"])
+    print("Breakfast: ")
+    searchandprint(date_logs, "breakfast")
+    print("Lunch: ")
+    searchandprint(date_logs, "lunch")
+    print("Afternoon snack")
+    searchandprint(date_logs, "afternoon snack")
+    print("Dinner")
+    searchandprint(date_logs, "dinner")
+    print("late snack")
+    searchandprint(date_logs, "late snack")
 def viewuserstat():
     global currentuser
     print(f"Name: {currentuser.name}")
@@ -368,20 +441,39 @@ def viewuserstat():
     print(f"Weight: {currentuser.weight} kg")
     print(f"Height: {currentuser.height} cm")
     print(f"Sex: {currentuser.sex}")
-    print(f"Activity level: {currentuser.workout}")
+    activity_levels = {
+    1.2: "Sedentary",
+    1.375: "Lightly active",
+    1.55: "Moderately active",
+    1.725: "Very active",
+    1.9: "Extra active",
+    } 
+    print(f"Activity level: {activity_levels[currentuser.workout]}")
     goal_map = {1: "Lose weight", 2: "Maintain weight", 3: "Gain weight"}
     print(f"Goal: {goal_map[currentuser.goal]}")
 def mealmenu():
     print("""================================
           MANAGE MEALS
 ================================
-1. Edit meal
-2. Delete meal
-3. Back
+1. Add meal
+2. Edit meal
+3. Delete meal
+4. Exit
 ================================""")
     userchoice = input_int("choose: ")
     if userchoice == 1:
-            
+        meal = entry.entry_today()
+        log_today.append(meal)   
+    if userchoice == 2:
+        editmeal()
+    elif userchoice == 3:
+        deletemeal()
+    elif userchoice == 4:
+        print("you exit")
+        return
+    else:
+        save_entry(log_today)
+        print("invalid choice")
 def show_menu():
     goal_map = {1: "Lose weight", 2: "Maintain weight", 3: "Gain weight"}
     time = date.today()
@@ -399,27 +491,152 @@ def show_menu():
   3. Search log by date
   4. View user stats 
   5. Change profile 
-  6. Save & exit 
+  6. See statistics
+  7. Save & exit 
 ========================================""")
+    
+#numpy
+def nutrientnumpy():    
+    proteinlist = []
+    carblist  = []
+    fatlist = []
+    calorieslist = []
+    with open("log.json", "r") as f:
+        data = json.load(f)
+    udays = input("Enter the number of days, or press Enter to view all data: ")
+    if udays == "":
+        for i in range(len(data)):
+            udaylist = []
+            proteintoday = 0
+            carbtoday = 0
+            fattoday = 0
+            caloriestoday = 0
+            result = entry.datetostring(date.today() - timedelta(days = i))
+            for log in data:
+                if log["date"] == result:
+                    udaylist.append(log)
+            if not udaylist:
+                continue
+            for log in udaylist:
+                new_log = entry.fromdict(log)
+                protein, carb, fat, calories = entry.macroscaculated(new_log)
+                proteintoday += protein
+                carbtoday += carb
+                fattoday += fat
+                caloriestoday += calories
+            proteinlist.append(proteintoday)
+            carblist.append(carbtoday)
+            fatlist.append(fattoday)    
+            calorieslist.append(caloriestoday)   
+        return proteinlist, carblist, fatlist, calorieslist
+    else:
+        udays = int(udays)
+        for i in range(udays):
+            udaylist = []
+            proteintoday = 0
+            carbtoday = 0
+            fattoday = 0
+            caloriestoday = 0
+            result = entry.datetostring(date.today() - timedelta(days = i))
+            for log in data:
+                if log["date"] == result:
+                    udaylist.append(log)
+            for log in udaylist:
+                new_log = entry.fromdict(log)
+                protein, carb, fat, calories = entry.macroscaculated(new_log)
+                proteintoday += protein
+                carbtoday += carb
+                fattoday += fat
+                caloriestoday += calories
+            proteinlist.append(proteintoday)
+            carblist.append(carbtoday)
+            fatlist.append(fattoday)    
+            calorieslist.append(caloriestoday)
+        return proteinlist, carblist, fatlist, calorieslist
+def nutrientarray():
+    proteinlist, carblist, fatlist, calorieslist = nutrientnumpy()
+    proteinarray = np.array(proteinlist)
+    carbarray = np.array(carblist)
+    fatarray = np.array(fatlist)
+    caloriesarray = np.array(calorieslist)
+    return proteinarray, carbarray, fatarray, caloriesarray
+def nutrientmean_all(proteinarray, carbarray, fatarray, caloriesarray):
+    return proteinarray.mean(), carbarray.mean(), fatarray.mean(), caloriesarray.mean()
+def nutrientstd_all(proteinarray, carbarray, fatarray, caloriesarray):
+    return proteinarray.std, carbarray.std, fatarray.std, caloriesarray.std
+def calostd_all():
+    proteinarray, carbarray, fatarray, caloriesarray = nutrientarray()
+    proteinstd, carbstd, fatstd, caloriesstd = nutrientstd_all(proteinarray, carbarray, fatarray, caloriesarray)
+    proteinmean, carbmean, fatmean, caloriesmean = nutrientmean_all(proteinarray, carbarray, fatarray, caloriesarray)
+
+    protein_cv = proteinstd / proteinmean if proteinmean != 0 else 0
+    carb_cv = carbstd / carbmean if carbmean != 0 else 0
+    fat_cv = fatstd / fatmean if fatmean != 0 else 0
+    calories_cv = caloriesstd / caloriesmean if caloriesmean != 0 else 0
+
+    return protein_cv, carb_cv, fat_cv, calories_cv
+def difftarget_all():
+    proteinarray, carbarray, fatarray, caloriesarray = nutrientarray()
+    proteinmean, carbmean, fatmean, caloriesmean = nutrientmean_all(proteinarray, carbarray, fatarray, caloriesarray)
+    print(f"Overall calo: {caloriesmean}/{currentuser.caloriesadvice()}")
+    print(f"Overall protein: {proteinmean}/{currentuser.proteinadvice()}"
+def cv_label(cv):
+    if cv < 0.15:
+        return "khá ổn định"
+    elif cv < 0.30:
+        return "hơi thất thường"
+    else:
+        return "biến động mạnh"
+def statnumpy():
+    while True:
+        print("""
+        ===== NUTRITION STATS =====
+        1. Show average (mean)
+        2. Show variation (std)
+        3. Show consistency (CV %)
+        4. Compare to your target
+        5. Exit
+        ============================
+        """)
+        choice = input_int("Choose an option: ")
+
+        if choice == 1:
+            protein, carb, fat, calories = nutrientmean_all()
+            print(f"Protein: {protein:.1f}g | Carb: {carb:.1f}g | Fat: {fat:.1f}g | Calories: {calories:.1f}")
+        elif choice == 2:
+            protein, carb, fat, calories = nutrientstd_all()
+            print(f"Protein: {protein:.1f}g | Carb: {carb:.1f}g | Fat: {fat:.1f}g | Calories: {calories:.1f}")
+        elif choice == 3:
+            protein_cv, carb_cv, fat_cv, calories_cv = calostd_all()
+            print(f"Protein consistency: {protein_cv*100:.1f}% ({cv_label(protein_cv)})")
+            print(f"Carb consistency:    {carb_cv*100:.1f}% ({cv_label(carb_cv)})")
+            print(f"Fat consistency:     {fat_cv*100:.1f}% ({cv_label(fat_cv)})")
+            print(f"Calorie consistency: {calories_cv*100:.1f}% ({cv_label(calories_cv)})")
+        elif choice == 4:
+            difftarget_all()
+        elif choice == 5:
+            return
+        else:
+            print("invalid")
 def main():
     load_user()
     while True:
         show_menu()
         userchoice = input_float("type number: ")
         if userchoice == 1:
-            log = entry.entry_today()
-            log_today.append(log)  
+            mealmenu()
         elif userchoice == 2:
-            logs = searchlogbydate()
-            viewlog(logs)
+            viewlog(log_today)
         elif userchoice == 3:
-            searchlogbydate()
+            logs = searchlogbydate()
+            printlog(logs)
         elif userchoice == 4:
             viewuserstat()
         elif userchoice == 5:
             user.stat()
         elif userchoice == 6:
+            statnumpy()
+        else:
             save_user(currentuser)
             save_entry(log_today)
             exit()
-            

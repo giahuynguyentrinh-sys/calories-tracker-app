@@ -1,0 +1,362 @@
+[
+    {
+        "name": "banana",
+        "date": "20260822",
+        "weight": 84.9,
+        "mealtype": "breakfast"
+    },
+    {
+        "name": "chicken breast",
+        "date": "20260822",
+        "weight": 219.2,
+        "mealtype": "late snack"
+    },
+    {
+        "name": "tofu",
+        "date": "20260822",
+        "weight": 71.7,
+        "mealtype": "afternoon snack"
+    },
+    {
+        "name": "pork",
+        "date": "20260822",
+        "weight": 57.9,
+        "mealtype": "lunch"
+    },
+    {
+        "name": "chicken breast",
+        "date": "20260822",
+        "weight": 104.7,
+        "mealtype": "dinner"
+    },
+    {
+        "name": "banana",
+        "date": "20260823",
+        "weight": 162.3,
+        "mealtype": "late snack"
+    },
+    {
+        "name": "milk",
+        "date": "20260823",
+        "weight": 252.4,
+        "mealtype": "breakfast"
+    },
+    {
+        "name": "rice",
+        "date": "20260823",
+        "weight": 239.7,
+        "mealtype": "afternoon snack"
+    },
+    {
+        "name": "egg",
+        "date": "20260823",
+        "weight": 224.5,
+        "mealtype": "dinner"
+    },
+    {
+        "name": "bread",
+        "date": "20260823",
+        "weight": 119.5,
+        "mealtype": "lunch"
+    },
+    {
+        "name": "pork",
+        "date": "20260824",
+        "weight": 74.2,
+        "mealtype": "afternoon snack"
+    },
+    {
+        "name": "bread",
+        "date": "20260824",
+        "weight": 200.9,
+        "mealtype": "breakfast"
+    },
+    {
+        "name": "rice",
+        "date": "20260824",
+        "weight": 232.4,
+        "mealtype": "dinner"
+    },
+    {
+        "name": "vegetable",
+        "date": "20260825",
+        "weight": 98.1,
+        "mealtype": "breakfast"
+    },
+    {
+        "name": "chicken breast",
+        "date": "20260825",
+        "weight": 61.5,
+        "mealtype": "dinner"
+    },
+    {
+        "name": "banana",
+        "date": "20260825",
+        "weight": 243.3,
+        "mealtype": "late snack"
+    },
+    {
+        "name": "chicken breast",
+        "date": "20260825",
+        "weight": 263.8,
+        "mealtype": "lunch"
+    },
+    {
+        "name": "chicken breast",
+        "date": "20260825",
+        "weight": 145.0,
+        "mealtype": "afternoon snack"
+    },
+    {
+        "name": "banana",
+        "date": "20260826",
+        "weight": 217.5,
+        "mealtype": "afternoon snack"
+    },
+    {
+        "name": "chicken breast",
+        "date": "20260826",
+        "weight": 202.3,
+        "mealtype": "lunch"
+    },
+    {
+        "name": "egg",
+        "date": "20260826",
+        "weight": 183.5,
+        "mealtype": "dinner"
+    },
+    {
+        "name": "banana",
+        "date": "20260826",
+        "weight": 90.9,
+        "mealtype": "late snack"
+    },
+    {
+        "name": "rice",
+        "date": "20260827",
+        "weight": 107.3,
+        "mealtype": "afternoon snack"
+    },
+    {
+        "name": "rice",
+        "date": "20260827",
+        "weight": 251.3,
+        "mealtype": "lunch"
+    },
+    {
+        "name": "pork",
+        "date": "20260827",
+        "weight": 116.9,
+        "mealtype": "late snack"
+    },
+    {
+        "name": "banana",
+        "date": "20260827",
+        "weight": 278.3,
+        "mealtype": "dinner"
+    },
+    {
+        "name": "fish",
+        "date": "20260828",
+        "weight": 85.7,
+        "mealtype": "afternoon snack"
+    },
+    {
+        "name": "egg",
+        "date": "20260828",
+        "weight": 111.7,
+        "mealtype": "lunch"
+    },
+    {
+        "name": "tofu",
+        "date": "20260828",
+        "weight": 184.7,
+        "mealtype": "late snack"
+    },
+    {
+        "name": "vegetable",
+        "date": "20260828",
+        "weight": 157.1,
+        "mealtype": "dinner"
+    },
+    {
+        "name": "vegetable",
+        "date": "20260828",
+        "weight": 149.9,
+        "mealtype": "breakfast"
+    },
+    {
+        "name": "rice",
+        "date": "20260829",
+        "weight": 265.3,
+        "mealtype": "lunch"
+    },
+    {
+        "name": "egg",
+        "date": "20260829",
+        "weight": 206.9,
+        "mealtype": "dinner"
+    },
+    {
+        "name": "pork",
+        "date": "20260829",
+        "weight": 199.1,
+        "mealtype": "breakfast"
+    },
+    {
+        "name": "tofu",
+        "date": "20260830",
+        "weight": 265.2,
+        "mealtype": "dinner"
+    },
+    {
+        "name": "rice",
+        "date": "20260830",
+        "weight": 220.1,
+        "mealtype": "late snack"
+    },
+    {
+        "name": "chicken breast",
+        "date": "20260830",
+        "weight": 220.4,
+        "mealtype": "afternoon snack"
+    },
+    {
+        "name": "tofu",
+        "date": "20260830",
+        "weight": 237.7,
+        "mealtype": "lunch"
+    },
+    {
+        "name": "fish",
+        "date": "20260831",
+        "weight": 50.8,
+        "mealtype": "afternoon snack"
+    },
+    {
+        "name": "milk",
+        "date": "20260831",
+        "weight": 293.0,
+        "mealtype": "breakfast"
+    },
+    {
+        "name": "egg",
+        "date": "20260831",
+        "weight": 176.9,
+        "mealtype": "lunch"
+    },
+    {
+        "name": "chicken breast",
+        "date": "20260831",
+        "weight": 267.6,
+        "mealtype": "late snack"
+    },
+    {
+        "name": "milk",
+        "date": "20260831",
+        "weight": 260.4,
+        "mealtype": "dinner"
+    },
+    {
+        "name": "tofu",
+        "date": "20260901",
+        "weight": 288.4,
+        "mealtype": "late snack"
+    },
+    {
+        "name": "tofu",
+        "date": "20260901",
+        "weight": 279.6,
+        "mealtype": "lunch"
+    },
+    {
+        "name": "vegetable",
+        "date": "20260901",
+        "weight": 131.0,
+        "mealtype": "breakfast"
+    },
+    {
+        "name": "rice",
+        "date": "20260901",
+        "weight": 78.0,
+        "mealtype": "dinner"
+    },
+    {
+        "name": "bread",
+        "date": "20260901",
+        "weight": 269.7,
+        "mealtype": "afternoon snack"
+    },
+    {
+        "name": "chicken breast",
+        "date": "20260902",
+        "weight": 233.0,
+        "mealtype": "lunch"
+    },
+    {
+        "name": "chicken breast",
+        "date": "20260902",
+        "weight": 294.5,
+        "mealtype": "breakfast"
+    },
+    {
+        "name": "tofu",
+        "date": "20260902",
+        "weight": 241.5,
+        "mealtype": "dinner"
+    },
+    {
+        "name": "egg",
+        "date": "20260902",
+        "weight": 214.9,
+        "mealtype": "afternoon snack"
+    },
+    {
+        "name": "tofu",
+        "date": "20260903",
+        "weight": 238.8,
+        "mealtype": "lunch"
+    },
+    {
+        "name": "banana",
+        "date": "20260903",
+        "weight": 228.2,
+        "mealtype": "afternoon snack"
+    },
+    {
+        "name": "pork",
+        "date": "20260903",
+        "weight": 298.8,
+        "mealtype": "dinner"
+    },
+    {
+        "name": "bread",
+        "date": "20260903",
+        "weight": 159.5,
+        "mealtype": "late snack"
+    },
+    {
+        "name": "tofu",
+        "date": "20260903",
+        "weight": 162.9,
+        "mealtype": "breakfast"
+    },
+    {
+        "name": "rice",
+        "date": "20260904",
+        "weight": 197.1,
+        "mealtype": "lunch"
+    },
+    {
+        "name": "banana",
+        "date": "20260904",
+        "weight": 197.1,
+        "mealtype": "breakfast"
+    },
+    {
+        "name": "rice",
+        "date": "20260904",
+        "weight": 67.7,
+        "mealtype": "late snack"
+    }
+]
