@@ -24,17 +24,48 @@ class entry():
             return "late snack"
     def type():
         default_type = entry.guessmealtype()
-        userinput = input(f"mealtype:[{default_type}] (type enter or type another: )")
-        meal_type = default_type if userinput == "" else userinput
+        valid_types = ["breakfast", "lunch", "afternoon snack", "dinner", "late snack"]
+
+        userinput = input(f"mealtype:[{default_type}] (nhấn Enter hoặc gõ loại khác: )")
+        while userinput != "" and userinput not in valid_types:
+            userinput = input(f"Không hợp lệ, nhập lại (Enter để dùng '{default_type}'): ")
+            meal_type = default_type if userinput == "" else userinput
         return meal_type
     def datetoobject(date_str):
         return datetime.strptime(date_str, "%Y%m%d").date()
     def datetostring(d):
         return d.strftime("%Y%m%d")
+    @staticmethod
+    def databaseappend():
+            with open("fooddatabase.json", "r") as f:
+                database = json.load(f)
+            name = input("press food name: ")
+            while True:
+                protein = input_float("press protein g: ")
+                carb = input_float("press carb g: ")
+                fat = input_float("press fat g: ")
+                checks = [
+                    0<= protein <= 10000,
+                    0<= carb <= 10000,
+                    0 <= fat <= 10000
+                ]
+                if all(checks):
+                    database[name] = {"protein": protein,"carb": carb,"fat": fat}
+                    break
+                else:
+                    print("invalid")
+            with open("fooddatabase.json", 'w') as f:
+                json.dump(database, f, indent = 4) 
     def macroscaculated(self):
-        with open("fooddatabase.json", "r") as f:
-            database = json.load(f)
-        info = database[self.name]
+        while True:
+            try:
+                with open("fooddatabase.json", "r") as f:
+                    database = json.load(f)
+                info = database[self.name]
+                break
+            except KeyError:
+                print("no data food found in database")
+                entry.databaseappend()        
         ratio = (self.weight / 100 ) 
         self.protein = info["protein"] * ratio
         self.carb = info["carb"] * ratio
@@ -60,10 +91,15 @@ class entry():
     @classmethod
     def entry_today(cls):
         userdate = input("type date (YYYYMMDD): ")
+        username = input("type food name: ")
+        while True:
+            userweight = input_float("type weight kg: ")
+            if 0< userweight < 150:
+                break
         meal = cls(
-            name = input("type food name: "),
-            weight = input_float("type weight g: "),
-                entrydate = date.today() if userdate == "" else entry.datetoobject(userdate),
+            name = username,
+            weight = userweight,
+            entrydate = date.today() if userdate == "" else entry.datetoobject(userdate),
             mealtype = entry.type()
         )
         return meal
@@ -104,9 +140,19 @@ class user():
     def stat(cls):
         global currentuser
         name = input("name: ")
-        weight = input_float("weight in kg: ")
-        height = input_float("height in cm: ")
-        age = input_int("age: ")
+        while True:
+            weight = input_float("weight in kg: ")
+            height = input_float("height in cm: ")
+            age = input_int("age: ")
+            checks = [
+                20 <= weight <= 150,
+                50 <= height <= 250,
+                1 <= age <= 120
+            ]
+            if all(checks):
+                break
+            else:
+                print("invalid")
         sex = input("female/male: ")
         while sex not in ["female", "male"]:
             sex = input("female/male: ")
@@ -258,22 +304,24 @@ def searchandprint(datelogs, mealtype):
         if log["mealtype"] == mealtype:
             print(count,log)
 def editmealmenu():
-    print("""
-What do you want to edit?
-1. Name
-2. Weight
-3. Meal type
-4. Cancel""")
-    userchoice= input_int("type: ")
-    while userchoice < 1 or userchoice > 4:
-        userchoice = input_int("type")
-    return userchoice
+    while True:
+        print("""
+    What do you want to edit?
+    1. Name
+    2. Weight
+    3. Meal type
+    4. Cancel""")
+        userchoice= input_int("type: ")
+        if 1 <= userchoice <= 4:
+            return userchoice
+        else:
+            print("invalid")
 #editmeal
 def editmeal():
     date_logs = searchlogbydate()
     if not date_logs:
-                print("no log found that day")
-                return
+        print("no log found that day")
+        return
     datetoobject = entry.datetoobject(date_logs[0]["date"])
     datetostring = date_logs[0]["date"]
     print(f"date: {datetoobject}")
@@ -310,6 +358,8 @@ def editmeal():
                         date_logs[usermeal]["mealtype"] = entry.type()
                     elif userchoice ==4:
                         break
+                    else:
+                        print("invalid")
     with open("log.json", "r") as f:
         data = json.load(f)
     new_data = []
@@ -469,10 +519,10 @@ def mealmenu():
     elif userchoice == 3:
         deletemeal()
     elif userchoice == 4:
+        save_entry(log_today)
         print("you exit")
         return
     else:
-        save_entry(log_today)
         print("invalid choice")
 def show_menu():
     goal_map = {1: "Lose weight", 2: "Maintain weight", 3: "Gain weight"}
@@ -563,7 +613,7 @@ def nutrientarray():
 def nutrientmean_all(proteinarray, carbarray, fatarray, caloriesarray):
     return proteinarray.mean(), carbarray.mean(), fatarray.mean(), caloriesarray.mean()
 def nutrientstd_all(proteinarray, carbarray, fatarray, caloriesarray):
-    return proteinarray.std, carbarray.std, fatarray.std, caloriesarray.std
+    return proteinarray.std(), carbarray.std(), fatarray.std(), caloriesarray.std()
 def calostd_all():
     proteinarray, carbarray, fatarray, caloriesarray = nutrientarray()
     proteinstd, carbstd, fatstd, caloriesstd = nutrientstd_all(proteinarray, carbarray, fatarray, caloriesarray)
@@ -573,13 +623,12 @@ def calostd_all():
     carb_cv = carbstd / carbmean if carbmean != 0 else 0
     fat_cv = fatstd / fatmean if fatmean != 0 else 0
     calories_cv = caloriesstd / caloriesmean if caloriesmean != 0 else 0
-
     return protein_cv, carb_cv, fat_cv, calories_cv
 def difftarget_all():
     proteinarray, carbarray, fatarray, caloriesarray = nutrientarray()
     proteinmean, carbmean, fatmean, caloriesmean = nutrientmean_all(proteinarray, carbarray, fatarray, caloriesarray)
     print(f"Overall calo: {caloriesmean}/{currentuser.caloriesadvice()}")
-    print(f"Overall protein: {proteinmean}/{currentuser.proteinadvice()}"
+    print(f"Overall protein: {proteinmean}/{currentuser.proteinadvice()}")
 def cv_label(cv):
     if cv < 0.15:
         return "khá ổn định"
@@ -601,10 +650,12 @@ def statnumpy():
         choice = input_int("Choose an option: ")
 
         if choice == 1:
-            protein, carb, fat, calories = nutrientmean_all()
+            proteinarray, carbarray, fatarray, caloriesarray = nutrientarray()
+            protein, carb, fat, calories = nutrientmean_all(proteinarray, carbarray, fatarray, caloriesarray)
             print(f"Protein: {protein:.1f}g | Carb: {carb:.1f}g | Fat: {fat:.1f}g | Calories: {calories:.1f}")
         elif choice == 2:
-            protein, carb, fat, calories = nutrientstd_all()
+            proteinarray, carbarray, fatarray, caloriesarray = nutrientarray()
+            protein, carb, fat, calories = nutrientstd_all(proteinarray, carbarray, fatarray, caloriesarray)
             print(f"Protein: {protein:.1f}g | Carb: {carb:.1f}g | Fat: {fat:.1f}g | Calories: {calories:.1f}")
         elif choice == 3:
             protein_cv, carb_cv, fat_cv, calories_cv = calostd_all()
@@ -636,7 +687,10 @@ def main():
             user.stat()
         elif userchoice == 6:
             statnumpy()
-        else:
+        elif userchoice == 7:
             save_user(currentuser)
             save_entry(log_today)
             exit()
+        else:
+            print('invalid')
+main()
