@@ -1,6 +1,7 @@
 from datetime import date, datetime, timedelta
 import json
 import numpy as np
+import matplotlib.pyplot as plt
 currentuser = None
 log_today = []
 class entry():
@@ -29,7 +30,7 @@ class entry():
         userinput = input(f"mealtype:[{default_type}] (nhấn Enter hoặc gõ loại khác: )")
         while userinput != "" and userinput not in valid_types:
             userinput = input(f"Không hợp lệ, nhập lại (Enter để dùng '{default_type}'): ")
-            meal_type = default_type if userinput == "" else userinput
+        meal_type = default_type if userinput == "" else userinput
         return meal_type
     def datetoobject(date_str):
         return datetime.strptime(date_str, "%Y%m%d").date()
@@ -546,68 +547,129 @@ def show_menu():
 ========================================""")
     
 #numpy
-def nutrientnumpy():    
-    proteinlist = []
-    carblist  = []
-    fatlist = []
-    calorieslist = []
-    with open("log.json", "r") as f:
-        data = json.load(f)
+
+def logdict():
+    try:
+        with open("chart.json", "r") as f:
+            logchart = json.load(f)
+            return logchart
+    except (FileNotFoundError,json.JSONDecodeError):
+        logchart = {}
+        with open("log.json", "r") as f:
+            data = json.load(f)
+        for log in data:
+            log_date = log["date"]
+            if log["date"] not in logchart:
+                logchart[log_date] = []
+                logchart[log_date].append(log)
+            elif log["date"] in logchart:
+                logchart[log_date].append(log)
+        with open("chart.json", "w") as f:
+            json.dump(logchart, f, indent = 4)
+        return logchart
+def get_group_key(day, group_by):
+    if group_by == 'day':
+        return day
+    elif group_by == 'week':
+        return (day.isocalendar()[0], day.isocalendar()[1])  # (nam, tuan)
+    elif group_by == 'month':
+        return (day.year, day.month)
+    elif group_by == 'quarter':
+        return (day.year, (day.month - 1) // 3 + 1)
+ 
+ 
+def subnutrientnumpy(udays):
+    # quyet dinh gom theo gi dua vao so ngay yeu cau
+    if udays <= 21:
+        group_by = 'day'
+    elif udays <= 90:
+        group_by = 'week'
+    else:
+        group_by = 'month'
+ 
+    logchart = logdict()
+    date_start = date.today() - timedelta(days=udays)
+ 
+    seen_keys = set()
+    grouped_data = {}
+ 
+    for day_str, loglist in logchart.items():
+        if not loglist:
+            continue
+ 
+        day = entry.datetoobject(day_str)
+ 
+        if not (date_start <= day <= date.today()):
+            continue
+ 
+        protein0 = 0
+        carb0 = 0
+        fat0 = 0
+        calories0 = 0
+        for log in loglist:
+            log =  entry.fromdict(log)
+            protein, carb, fat, calories = entry.macroscaculated(log)
+            protein0 += protein
+            carb0 += carb
+            fat0 += fat
+            calories0 += calories
+ 
+        group_key = get_group_key(day, group_by)
+ 
+        if group_key not in seen_keys:
+            seen_keys.add(group_key)
+            grouped_data[group_key] = {
+                'protein': protein0,
+                'carb': carb0,
+                'fat': fat0,
+                'calories': calories0,
+            }
+        else:
+            grouped_data[group_key]['protein'] += protein0
+            grouped_data[group_key]['carb'] += carb0
+            grouped_data[group_key]['fat'] += fat0
+            grouped_data[group_key]['calories'] += calories0
+ 
+    proteinlist = [v['protein'] for v in grouped_data.values()]
+    carblist = [v['carb'] for v in grouped_data.values()]
+    fatlist = [v['fat'] for v in grouped_data.values()]
+    calorieslist = [v['calories'] for v in grouped_data.values()]
+
+    thatday = []
+    for group_key in grouped_data.keys():
+        if group_by == 'day':
+            actual_date = group_key
+        elif group_by == 'week':
+            year = group_key[0]
+            week = group_key[1]
+            actual_date = date.fromisocalendar(year, week, 1)
+        elif group_by == 'month':
+            year = group_key[0]
+            month = group_key[1]
+            actual_date = date(year, month, 1)
+        elif group_by == 'quarter':
+            year = group_key[0]
+            quarter_number = group_key[1]
+            first_month_of_quarter = (quarter_number - 1) * 3 + 1
+            actual_date = date(year, first_month_of_quarter, 1)
+        thatday.append(actual_date)
+    return proteinlist, carblist, fatlist, calorieslist, thatday               
+def nutrientnumpy():
+    logchart = logdict()
     udays = input("Enter the number of days, or press Enter to view all data: ")
     if udays == "":
-        for i in range(len(data)):
-            udaylist = []
-            proteintoday = 0
-            carbtoday = 0
-            fattoday = 0
-            caloriestoday = 0
-            result = entry.datetostring(date.today() - timedelta(days = i))
-            for log in data:
-                if log["date"] == result:
-                    udaylist.append(log)
-            if not udaylist:
-                continue
-            for log in udaylist:
-                new_log = entry.fromdict(log)
-                protein, carb, fat, calories = entry.macroscaculated(new_log)
-                proteintoday += protein
-                carbtoday += carb
-                fattoday += fat
-                caloriestoday += calories
-            proteinlist.append(proteintoday)
-            carblist.append(carbtoday)
-            fatlist.append(fattoday)    
-            calorieslist.append(caloriestoday)   
-        return proteinlist, carblist, fatlist, calorieslist
+        udays = len(logchart)
+        proteinlist, carblist, fatlist,calorieslist,thatday = subnutrientnumpy(udays)
+        return proteinlist, carblist, fatlist, calorieslist,thatday
     else:
         udays = int(udays)
-        for i in range(udays):
-            udaylist = []
-            proteintoday = 0
-            carbtoday = 0
-            fattoday = 0
-            caloriestoday = 0
-            result = entry.datetostring(date.today() - timedelta(days = i))
-            for log in data:
-                if log["date"] == result:
-                    udaylist.append(log)
-            for log in udaylist:
-                new_log = entry.fromdict(log)
-                protein, carb, fat, calories = entry.macroscaculated(new_log)
-                proteintoday += protein
-                carbtoday += carb
-                fattoday += fat
-                caloriestoday += calories
-            proteinlist.append(proteintoday)
-            carblist.append(carbtoday)
-            fatlist.append(fattoday)    
-            calorieslist.append(caloriestoday)
-        return proteinlist, carblist, fatlist, calorieslist
+        proteinlist, carblist, fatlist,calorieslist,thatday = subnutrientnumpy(udays)
+        return proteinlist, carblist, fatlist, calorieslist,thatday
 def nutrientarray():
-    proteinlist, carblist, fatlist, calorieslist = nutrientnumpy()
+    proteinlist, carblist, fatlist, calorieslist,thatday = nutrientnumpy()
     proteinarray = np.array(proteinlist)
     carbarray = np.array(carblist)
-    fatarray = np.array(fatlist)
+    fatarray = np.array(fatlist)    
     caloriesarray = np.array(calorieslist)
     return proteinarray, carbarray, fatarray, caloriesarray
 def nutrientmean_all(proteinarray, carbarray, fatarray, caloriesarray):
@@ -636,6 +698,14 @@ def cv_label(cv):
         return "hơi thất thường"
     else:
         return "biến động mạnh"
+def chartstat():
+    proteinlist, carblist, fatlist, calorieslist,thatday = nutrientnumpy()
+    plt.plot(thatday, calorieslist, marker = "o")
+    plt.xlabel("Ngày")
+    plt.ylabel("Calories")
+    plt.axhline(y=currentuser.caloriesadvice(), color = "red", linestyle = "-",label = "your calories aim")
+    plt.gcf().autofmt_xdate()
+    plt.show()
 def statnumpy():
     while True:
         print("""
@@ -644,7 +714,8 @@ def statnumpy():
         2. Show variation (std)
         3. Show consistency (CV %)
         4. Compare to your target
-        5. Exit
+        5. See chart
+        6. Exit
         ============================
         """)
         choice = input_int("Choose an option: ")
@@ -666,6 +737,9 @@ def statnumpy():
         elif choice == 4:
             difftarget_all()
         elif choice == 5:
+            chartstat()
+        elif choice == 6:
+            print("you exit")
             return
         else:
             print("invalid")

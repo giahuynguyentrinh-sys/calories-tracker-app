@@ -65,7 +65,6 @@ Expand the tracker with additional features such as:
 * More detailed food history
 * Improved user experience
 * Additional tracking features
-* Additional with numpy, calculate data.
 
 ### v3.0.0
 
