@@ -567,127 +567,88 @@ def logdict():
         with open("chart.json", "w") as f:
             json.dump(logchart, f, indent = 4)
         return logchart
-def get_group_key(day, group_by):
-    if group_by == 'day':
-        return day
-    elif group_by == 'week':
-        return (day.isocalendar()[0], day.isocalendar()[1])  # (nam, tuan)
-    elif group_by == 'month':
-        return (day.year, day.month)
-    elif group_by == 'quarter':
-        return (day.year, (day.month - 1) // 3 + 1)
- 
- 
 def subnutrientnumpy(udays):
-    # quyet dinh gom theo gi dua vao so ngay yeu cau
-    if udays <= 21:
-        group_by = 'day'
-    elif udays <= 90:
-        group_by = 'week'
-    else:
-        group_by = 'month'
- 
     logchart = logdict()
-    date_start = date.today() - timedelta(days=udays)
- 
-    seen_keys = set()
-    grouped_data = {}
- 
-    for day_str, loglist in logchart.items():
-        if not loglist:
-            continue
- 
-        day = entry.datetoobject(day_str)
- 
-        if not (date_start <= day <= date.today()):
-            continue
- 
-        protein0 = 0
-        carb0 = 0
-        fat0 = 0
-        calories0 = 0
-        for log in loglist:
-            log =  entry.fromdict(log)
-            protein, carb, fat, calories = entry.macroscaculated(log)
-            protein0 += protein
-            carb0 += carb
-            fat0 += fat
-            calories0 += calories
- 
-        group_key = get_group_key(day, group_by)
- 
-        if group_key not in seen_keys:
-            seen_keys.add(group_key)
-            grouped_data[group_key] = {
-                'protein': protein0,
-                'carb': carb0,
-                'fat': fat0,
-                'calories': calories0,
-            }
-        else:
-            grouped_data[group_key]['protein'] += protein0
-            grouped_data[group_key]['carb'] += carb0
-            grouped_data[group_key]['fat'] += fat0
-            grouped_data[group_key]['calories'] += calories0
- 
-    proteinlist = [v['protein'] for v in grouped_data.values()]
-    carblist = [v['carb'] for v in grouped_data.values()]
-    fatlist = [v['fat'] for v in grouped_data.values()]
-    calorieslist = [v['calories'] for v in grouped_data.values()]
+    grouped_logs = {}
+    start_date = date.today() - timedelta(days=udays)
 
-    thatday = []
-    for group_key in grouped_data.keys():
-        if group_by == 'day':
-            actual_date = group_key
-        elif group_by == 'week':
-            year = group_key[0]
-            week = group_key[1]
-            actual_date = date.fromisocalendar(year, week, 1)
-        elif group_by == 'month':
-            year = group_key[0]
-            month = group_key[1]
-            actual_date = date(year, month, 1)
-        elif group_by == 'quarter':
-            year = group_key[0]
-            quarter_number = group_key[1]
-            first_month_of_quarter = (quarter_number - 1) * 3 + 1
-            actual_date = date(year, first_month_of_quarter, 1)
-        thatday.append(actual_date)
-    return proteinlist, carblist, fatlist, calorieslist, thatday               
+    # Bước 1: gom log theo từng kỳ (ngày / tuần / tháng / quý)
+    for day_str, loglist in logchart.items():
+        day = entry.datetoobject(day_str)
+        if not loglist or not (start_date <= day <= date.today()):
+            continue
+
+        # vẫn giữ nguyên logic if/elif chọn kỳ theo udays
+        if udays <= 21:
+            period_key = day
+        elif udays <= 90:
+            period_key = (day.isocalendar().year, day.isocalendar().week)
+        elif udays <= 365:
+            period_key = (day.year, day.month)
+        else:
+            period_key = (day.year, (day.month - 1) // 3 + 1)
+
+       
+        grouped_logs.setdefault(period_key, []).extend(loglist)
+
+    # Bước 2: với mỗi kỳ, cộng dồn protein/carb/fat/calories
+    protein_list = []
+    carb_list = []
+    fat_list = []
+    calories_list = []
+    needed_list = []   # mục tiêu calo của từng kỳ
+    keys = []
+
+    for period_key in sorted(grouped_logs):
+        loglist = grouped_logs[period_key]
+        keys.append(period_key)
+
+        proteins = carbs = fats = calories = 0
+        for log in loglist:
+            e = entry(log["name"], log["weight"], log["mealtype"])
+            protein, carb, fat, cal = e.macroscaculated()
+            proteins += protein
+            carbs += carb
+            fats += fat
+            calories += cal
+
+        protein_list.append(proteins)
+        carb_list.append(carbs)
+        fat_list.append(fats)
+        calories_list.append(calories)
+
+        num_days = len({log["date"] for log in loglist})  # số ngày có log trong kỳ
+        needed_list.append(currentuser.caloriesadvice() * num_days)
+
+    return protein_list, carb_list, fat_list, calories_list, keys, needed_list
 def nutrientnumpy():
     logchart = logdict()
-    udays = input("Enter the number of days, or press Enter to view all data: ")
+    udays = input("Type number of dates or enter to review all data: ")
     if udays == "":
         udays = len(logchart)
-        proteinlist, carblist, fatlist,calorieslist,thatday = subnutrientnumpy(udays)
-        return proteinlist, carblist, fatlist, calorieslist,thatday
     else:
         udays = int(udays)
-        proteinlist, carblist, fatlist,calorieslist,thatday = subnutrientnumpy(udays)
-        return proteinlist, carblist, fatlist, calorieslist,thatday
+    return subnutrientnumpy(udays)
+
 def nutrientarray():
-    proteinlist, carblist, fatlist, calorieslist,thatday = nutrientnumpy()
-    proteinarray = np.array(proteinlist)
-    carbarray = np.array(carblist)
-    fatarray = np.array(fatlist)    
-    caloriesarray = np.array(calorieslist)
-    return proteinarray, carbarray, fatarray, caloriesarray
+    proteinlist, carblist, fatlist, calorieslist, keys, neededlist = nutrientnumpy()
+    return (np.array(proteinlist), np.array(carblist), np.array(fatlist),
+            np.array(calorieslist), keys, np.array(neededlist))
 def nutrientmean_all(proteinarray, carbarray, fatarray, caloriesarray):
     return proteinarray.mean(), carbarray.mean(), fatarray.mean(), caloriesarray.mean()
 def nutrientstd_all(proteinarray, carbarray, fatarray, caloriesarray):
     return proteinarray.std(), carbarray.std(), fatarray.std(), caloriesarray.std()
 def calostd_all():
-    proteinarray, carbarray, fatarray, caloriesarray = nutrientarray()
+    proteinarray, carbarray, fatarray, caloriesarray,_,_ = nutrientarray()
     proteinstd, carbstd, fatstd, caloriesstd = nutrientstd_all(proteinarray, carbarray, fatarray, caloriesarray)
     proteinmean, carbmean, fatmean, caloriesmean = nutrientmean_all(proteinarray, carbarray, fatarray, caloriesarray)
-
     protein_cv = proteinstd / proteinmean if proteinmean != 0 else 0
     carb_cv = carbstd / carbmean if carbmean != 0 else 0
     fat_cv = fatstd / fatmean if fatmean != 0 else 0
     calories_cv = caloriesstd / caloriesmean if caloriesmean != 0 else 0
     return protein_cv, carb_cv, fat_cv, calories_cv
 def difftarget_all():
-    proteinarray, carbarray, fatarray, caloriesarray = nutrientarray()
+    proteinarray, carbarray, fatarray, caloriesarray,_,_ = nutrientarray()
     proteinmean, carbmean, fatmean, caloriesmean = nutrientmean_all(proteinarray, carbarray, fatarray, caloriesarray)
     print(f"Overall calo: {caloriesmean}/{currentuser.caloriesadvice()}")
     print(f"Overall protein: {proteinmean}/{currentuser.proteinadvice()}")
@@ -698,12 +659,20 @@ def cv_label(cv):
         return "hơi thất thường"
     else:
         return "biến động mạnh"
+def keylabel(k):
+    if isinstance(k, tuple):
+        return f"{k[0]}-{k[1]:02d}"
+    return str(k)
 def chartstat():
-    proteinlist, carblist, fatlist, calorieslist,thatday = nutrientnumpy()
-    plt.plot(thatday, calorieslist, marker = "o")
+    proteinarray, carbarray, fatarray, caloriesarray, keys, neededarray = nutrientarray()
+    new_keys = []
+    for key in keys:
+        key = keylabel(key)
+        new_keys.append(key)
+    plt.plot(new_keys, caloriesarray, marker="o", label="calories eaten")
     plt.xlabel("Ngày")
     plt.ylabel("Calories")
-    plt.axhline(y=currentuser.caloriesadvice(), color = "red", linestyle = "-",label = "your calories aim")
+    plt.legend()
     plt.gcf().autofmt_xdate()
     plt.show()
 def statnumpy():
