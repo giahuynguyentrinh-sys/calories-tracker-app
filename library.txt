@@ -1,0 +1,4 @@
+matplotib thư viện chart
+numpy thư viện tính toán
+panda thư viện gom số liệu, thống kê vào 1 bảng
+pandaAI thư viện pull API, send API.

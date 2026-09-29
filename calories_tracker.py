@@ -2,6 +2,7 @@ from datetime import date, datetime, timedelta
 import json
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 currentuser = None
 log_today = []
 class entry():
@@ -546,167 +547,167 @@ def show_menu():
   7. Save & exit 
 ========================================""")
     
-#numpy
+#numpycombipandas
 
-def logdict():
-    try:
-        with open("chart.json", "r") as f:
-            logchart = json.load(f)
-            return logchart
-    except (FileNotFoundError,json.JSONDecodeError):
-        logchart = {}
-        with open("log.json", "r") as f:
-            data = json.load(f)
-        for log in data:
-            log_date = log["date"]
-            if log["date"] not in logchart:
-                logchart[log_date] = []
-                logchart[log_date].append(log)
-            elif log["date"] in logchart:
-                logchart[log_date].append(log)
-        with open("chart.json", "w") as f:
-            json.dump(logchart, f, indent = 4)
-        return logchart
-def subnutrientnumpy(udays):
-    logchart = logdict()
-    grouped_logs = {}
-    start_date = date.today() - timedelta(days=udays)
-
-    # Bước 1: gom log theo từng kỳ (ngày / tuần / tháng / quý)
-    for day_str, loglist in logchart.items():
-        day = entry.datetoobject(day_str)
-        if not loglist or not (start_date <= day <= date.today()):
-            continue
-
-        # vẫn giữ nguyên logic if/elif chọn kỳ theo udays
-        if udays <= 21:
-            period_key = day
-        elif udays <= 90:
-            period_key = (day.isocalendar().year, day.isocalendar().week)
-        elif udays <= 365:
-            period_key = (day.year, day.month)
-        else:
-            period_key = (day.year, (day.month - 1) // 3 + 1)
-
-       
-        grouped_logs.setdefault(period_key, []).extend(loglist)
-
-    # Bước 2: với mỗi kỳ, cộng dồn protein/carb/fat/calories
-    protein_list = []
-    carb_list = []
-    fat_list = []
-    calories_list = []
-    needed_list = []   # mục tiêu calo của từng kỳ
-    keys = []
-
-    for period_key in sorted(grouped_logs):
-        loglist = grouped_logs[period_key]
-        keys.append(period_key)
-
-        proteins = carbs = fats = calories = 0
-        for log in loglist:
-            e = entry(log["name"], log["weight"], log["mealtype"])
-            protein, carb, fat, cal = e.macroscaculated()
-            proteins += protein
-            carbs += carb
-            fats += fat
-            calories += cal
-
-        protein_list.append(proteins)
-        carb_list.append(carbs)
-        fat_list.append(fats)
-        calories_list.append(calories)
-
-        num_days = len({log["date"] for log in loglist})  # số ngày có log trong kỳ
-        needed_list.append(currentuser.caloriesadvice() * num_days)
-
-    return protein_list, carb_list, fat_list, calories_list, keys, needed_list
+def logpandas():
+    with open("log.json", "r") as f:
+        data = json.load(f)
+    with open("fooddatabase.json", "r") as file:
+        dtb = json.load(file)
+    data = pd.DataFrame(data)
+    return data, dtb
+def macros(row, key, dtb):
+    food = dtb.get(row["name"])
+    if food is None:
+        return 0
+    return food[key] * row["weight"] /100    
+def subnutrientnumpy(udays, logchart, dtb):
+    start_date = pd.Timestamp(date.today() - timedelta(days=udays))
+    logchart["date"] = pd.to_datetime(logchart["date"])
+    mask = (logchart["date"] >= start_date) & (logchart["date"] <= pd.Timestamp(date.today()))
+    logchart = logchart[mask]   
+    if udays <= 21:
+        logchart["period_key"] = logchart["date"].dt.to_period("D")
+    elif udays <= 90:
+        logchart["period_key"] = logchart["date"].dt.to_period("W")
+    elif udays <= 365:
+        logchart["period_key"] = logchart["date"].dt.to_period("M")
+    elif udays <= 1089:
+        logchart["period_key"] = logchart["date"].dt.to_period("Q")
+    else:
+        logchart["period_key"] = logchart["date"].dt.to_period("Y")
+    nutrients = ["protein", "carb", "fat", "calories"]
+    for nutrient in nutrients:
+        logchart[nutrient] = logchart.apply(lambda row: macros(row, nutrient, dtb), axis = 1)
+    x = logchart.groupby("period_key")[["protein", "carb", "fat", "calories"]].sum()
+    ymean = logchart.groupby("period_key")[["protein", "carb", "fat", "calories"]].mean()
+    zstd = logchart.groupby("period_key")[["protein", "carb", "fat", "calories"]].std()
+    qcv = ( zstd / ymean ) * 100
+    return x, ymean, zstd, qcv
 def nutrientnumpy():
-    logchart = logdict()
+    logchart, dtb = logpandas()  
     udays = input("Type number of dates or enter to review all data: ")
     if udays == "":
         udays = len(logchart)
     else:
         udays = int(udays)
-    return subnutrientnumpy(udays)
-
-def nutrientarray():
-    proteinlist, carblist, fatlist, calorieslist, keys, neededlist = nutrientnumpy()
-    return (np.array(proteinlist), np.array(carblist), np.array(fatlist),
-            np.array(calorieslist), keys, np.array(neededlist))
-def nutrientmean_all(proteinarray, carbarray, fatarray, caloriesarray):
-    return proteinarray.mean(), carbarray.mean(), fatarray.mean(), caloriesarray.mean()
-def nutrientstd_all(proteinarray, carbarray, fatarray, caloriesarray):
-    return proteinarray.std(), carbarray.std(), fatarray.std(), caloriesarray.std()
-def calostd_all():
-    proteinarray, carbarray, fatarray, caloriesarray,_,_ = nutrientarray()
-    proteinstd, carbstd, fatstd, caloriesstd = nutrientstd_all(proteinarray, carbarray, fatarray, caloriesarray)
-    proteinmean, carbmean, fatmean, caloriesmean = nutrientmean_all(proteinarray, carbarray, fatarray, caloriesarray)
-    protein_cv = proteinstd / proteinmean if proteinmean != 0 else 0
-    carb_cv = carbstd / carbmean if carbmean != 0 else 0
-    fat_cv = fatstd / fatmean if fatmean != 0 else 0
-    calories_cv = caloriesstd / caloriesmean if caloriesmean != 0 else 0
-    return protein_cv, carb_cv, fat_cv, calories_cv
-def difftarget_all():
-    proteinarray, carbarray, fatarray, caloriesarray,_,_ = nutrientarray()
-    proteinmean, carbmean, fatmean, caloriesmean = nutrientmean_all(proteinarray, carbarray, fatarray, caloriesarray)
-    print(f"Overall calo: {caloriesmean}/{currentuser.caloriesadvice()}")
-    print(f"Overall protein: {proteinmean}/{currentuser.proteinadvice()}")
-def cv_label(cv):
-    if cv < 0.15:
-        return "khá ổn định"
-    elif cv < 0.30:
-        return "hơi thất thường"
-    else:
-        return "biến động mạnh"
-def keylabel(k):
-    if isinstance(k, tuple):
-        return f"{k[0]}-{k[1]:02d}"
-    return str(k)
-def chartstat():
-    proteinarray, carbarray, fatarray, caloriesarray, keys, neededarray = nutrientarray()
-    new_keys = []
-    for key in keys:
-        key = keylabel(key)
-        new_keys.append(key)
-    plt.plot(new_keys, caloriesarray, marker="o", label="calories eaten")
-    plt.xlabel("Ngày")
+    return subnutrientnumpy(udays, logchart, dtb)
+def nutrientdescribe():
+    nt, ymean,zstd,qcv,logchart = nutrientnumpy()
+    return nt.describe()
+def chartstatsum(unit):
+    nt, ymean, zstd, qcv = nutrientnumpy()
+    plt.plot(nt.index.to_timestamp(), nt[unit])
+    plt.title("Sum calo chart")
+    plt.xlabel("Time")
     plt.ylabel("Calories")
-    plt.legend()
-    plt.gcf().autofmt_xdate()
     plt.show()
-def statnumpy():
+def chartstatmean(unit):
+    nt, ymean, zstd, qcv = nutrientnumpy()
+    plt.plot(ymean.index.to_timestamp(), ymean[unit])
+    plt.title("Sum calo chart")
+    plt.xlabel("Time")
+    plt.ylabel("Calories")
+    plt.show()
+def chartstatstd(unit):
+    nt, ymean, zstd, qcv = nutrientnumpy()
+    plt.plot(zstd.index.to_timestamp(), zstd[unit])
+    plt.title("Sum calo chart")
+    plt.xlabel("Time")
+    plt.ylabel("Calories")
+    plt.show()
+def chooseunit():
+    units = {1: "protein", 2: "carb", 3: "fat", 4: "calories"}
+    while True:
+        print("""
+===== CHOOSE UNIT =====
+1. Protein
+2. Carb
+3. Fat
+4. Calories
+=======================""")
+        c = input_int("Choose a unit: ")
+        if c in units:
+            return units[c]
+        print("Invalid choice")
+
+def drawchart(df, unit, title, ylabel):
+    plt.plot(df.index.to_timestamp(), df[unit], marker="o")
+    plt.title(f"{title} of {unit}")
+    plt.xlabel("Time")
+    plt.ylabel(ylabel)
+    plt.show()
+
+def chartstatsum(nt, unit):
+    drawchart(nt, unit, "Sum chart", unit)
+
+def chartstatmean(ymean, unit):
+    drawchart(ymean, unit, "Mean chart", f"Mean {unit}")
+
+def chartstatstd(zstd, unit):
+    drawchart(zstd, unit, "Std chart", f"Std {unit}")
+
+def chartstatqcv(qcv, unit):
+    drawchart(qcv, unit, "CV chart", f"CV {unit} (%)")
+
+def chartstatmenu():
+    nt, ymean, zstd, qcv = nutrientnumpy()
+    unit = chooseunit()
+    while True:
+        print(f"""
+===== CHART STATS =====
+1. Show sum chart
+2. Show chart average (mean)
+3. Show chart variation (std)
+4. Show chart consistency (CV %)
+5. Change unit (currently: {unit})
+6. Exit
+=======================""")
+        choice = input_int("Choose an option: ")
+
+        if choice == 1:
+            chartstatsum(nt, unit)
+        elif choice == 2:
+            chartstatmean(ymean, unit)
+        elif choice == 3:
+            chartstatstd(zstd, unit)
+        elif choice == 4:
+            chartstatqcv(qcv, unit)
+        elif choice == 5:
+            unit = chooseunit()
+        elif choice == 6:
+            break
+        else:
+            print("Invalid choice")
+                
+def statnumpy():    
     while True:
         print("""
         ===== NUTRITION STATS =====
         1. Show average (mean)
         2. Show variation (std)
         3. Show consistency (CV %)
-        4. Compare to your target
-        5. See chart
+        4. See overall statistics
+        5. See chart menu
         6. Exit
         ============================
         """)
         choice = input_int("Choose an option: ")
 
         if choice == 1:
-            proteinarray, carbarray, fatarray, caloriesarray = nutrientarray()
-            protein, carb, fat, calories = nutrientmean_all(proteinarray, carbarray, fatarray, caloriesarray)
-            print(f"Protein: {protein:.1f}g | Carb: {carb:.1f}g | Fat: {fat:.1f}g | Calories: {calories:.1f}")
+            nt, ymean,zstd,qcv = nutrientnumpy()
+            print(ymean)
         elif choice == 2:
-            proteinarray, carbarray, fatarray, caloriesarray = nutrientarray()
-            protein, carb, fat, calories = nutrientstd_all(proteinarray, carbarray, fatarray, caloriesarray)
-            print(f"Protein: {protein:.1f}g | Carb: {carb:.1f}g | Fat: {fat:.1f}g | Calories: {calories:.1f}")
+            nt, ymean,zstd,qcv = nutrientnumpy()
+            print(zstd)
         elif choice == 3:
-            protein_cv, carb_cv, fat_cv, calories_cv = calostd_all()
-            print(f"Protein consistency: {protein_cv*100:.1f}% ({cv_label(protein_cv)})")
-            print(f"Carb consistency:    {carb_cv*100:.1f}% ({cv_label(carb_cv)})")
-            print(f"Fat consistency:     {fat_cv*100:.1f}% ({cv_label(fat_cv)})")
-            print(f"Calorie consistency: {calories_cv*100:.1f}% ({cv_label(calories_cv)})")
+            nt, ymean,zstd,qcv = nutrientnumpy()
+            print(qcv)
         elif choice == 4:
-            difftarget_all()
+            nt, ymean,zstd,qcv = nutrientnumpy()
+            print(nt)
         elif choice == 5:
-            chartstat()
+            chartstatmenu()
         elif choice == 6:
             print("you exit")
             return
