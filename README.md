@@ -71,7 +71,7 @@ Expand the tracker with additional features such as:
 Introduce statistics and smarter recommendations based on the user's tracking data.
 
 Possible features:
-
+* Streamlit UI design (Fully AI frontend)
 * Nutrition statistics
 * Calorie and protein trends
 * Progress tracking
