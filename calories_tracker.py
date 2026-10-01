@@ -3,7 +3,8 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-currentuser = None
+import streamlit as st
+valid_types = ["breakfast", "lunch", "afternoon snack", "dinner", "late snack"]
 log_today = []
 class entry():
     def __init__(self, name,weight, mealtype, entrydate =None):
@@ -24,40 +25,33 @@ class entry():
             return "dinner"
         elif hour >= 21 or hour <= 5:
             return "late snack"
-    def type():
-        default_type = entry.guessmealtype()
-        valid_types = ["breakfast", "lunch", "afternoon snack", "dinner", "late snack"]
-
-        userinput = input(f"mealtype:[{default_type}] (nhấn Enter hoặc gõ loại khác: )")
-        while userinput != "" and userinput not in valid_types:
-            userinput = input(f"Không hợp lệ, nhập lại (Enter để dùng '{default_type}'): ")
-        meal_type = default_type if userinput == "" else userinput
-        return meal_type
+    def validtype(userinput):
+        if userinput not in valid_types:
+            raise ValueError(f"Loại bữa phải là một trong: {', '.join(valid_types)}")
+        return userinput
     def datetoobject(date_str):
         return datetime.strptime(date_str, "%Y%m%d").date()
     def datetostring(d):
         return d.strftime("%Y%m%d")
-    @staticmethod
-    def databaseappend():
-            with open("fooddatabase.json", "r") as f:
-                database = json.load(f)
-            name = input("press food name: ")
-            while True:
-                protein = input_float("press protein g: ")
-                carb = input_float("press carb g: ")
-                fat = input_float("press fat g: ")
-                checks = [
-                    0<= protein <= 10000,
-                    0<= carb <= 10000,
-                    0 <= fat <= 10000
-                ]
-                if all(checks):
-                    database[name] = {"protein": protein,"carb": carb,"fat": fat}
-                    break
-                else:
-                    print("invalid")
-            with open("fooddatabase.json", 'w') as f:
-                json.dump(database, f, indent = 4) 
+    def add_food(name, protein, carb, fat):
+        name = name.strip()
+        if name == "":
+            raise ValueError("Tên món không được để trống")
+        checks = [
+            0 <= protein <= 10000,
+            0 <= carb <= 10000,
+            0 <= fat <= 10000
+        ]
+        if not all(checks):
+            raise ValueError("protein/carb/fat phải trong khoảng 0 đến 10000")
+
+        with open("fooddatabase.json", "r") as f:
+            database = json.load(f)
+
+        database[name] = {"protein": protein, "carb": carb, "fat": fat}
+
+        with open("fooddatabase.json", "w") as f:
+            json.dump(database, f, indent=4) 
     def macroscaculated(self):
         while True:
             try:
@@ -91,23 +85,35 @@ class entry():
         )
         return new_entry
     @classmethod
-    def entry_today(cls):
-        userdate = input("type date (YYYYMMDD): ")
-        username = input("type food name: ")
-        while True:
-            userweight = input_float("type weight kg: ")
-            if 0< userweight < 150:
-                break
+    def entry_today(cls, foodweight,username,mealtype, userdate = None):
+        if  0>foodweight or foodweight > 5000:
+            raise ValueError("Khối lượng phải trong khoảng (0, 5000] gram")
         meal = cls(
             name = username,
-            weight = userweight,
-            entrydate = date.today() if userdate == "" else entry.datetoobject(userdate),
-            mealtype = entry.type()
+            weight = foodweight,
+            entrydate = userdate,
+            mealtype = mealtype
         )
         return meal
     
 class user():
     def __init__(self, name, weight, height, age, sex, workout, goal):
+        name = name.strip()
+        if name == "":
+            raise ValueError("name should be Nguyen Van A not none")
+        checks = [
+                        20 <= weight <= 200,
+                        50 <= height <= 250,
+                        1 <= age <= 120
+        ]
+        if not all(checks):
+            raise ValueError("invalid weight, height or age")
+        if sex not in ["female", "male"]:
+            raise ValueError("invalid sex, type either female or male")
+        if goal not in [1,2,3]:
+            raise ValueError("invalid goal must be a number [1,3]")
+        if workout not in [1.2,1.375,1.55,1.725,1.9]:
+            raise ValueError("invalid workout must be a number in [1.2,1.375,1.55,1.725,1.9]")
         self.name= name
         self.weight= weight
         self.height= height
@@ -115,7 +121,7 @@ class user():
         self.sex= sex
         self.workout = workout
         self.goal = goal
-
+        
     def todict(self):
         return {
             "name": self.name,
@@ -136,93 +142,7 @@ class user():
             sex = data["sex"],
             workout = data["workout"],
             goal = data["goal"]
-        )
-
-    @classmethod
-    def stat(cls):
-        global currentuser
-        name = input("name: ")
-        while True:
-            weight = input_float("weight in kg: ")
-            height = input_float("height in cm: ")
-            age = input_int("age: ")
-            checks = [
-                20 <= weight <= 150,
-                50 <= height <= 250,
-                1 <= age <= 120
-            ]
-            if all(checks):
-                break
-            else:
-                print("invalid")
-        sex = input("female/male: ")
-        while sex not in ["female", "male"]:
-            sex = input("female/male: ")
-        workout = cls.activity()
-        goal = input_int("""
-What is your goal?
-
-1. Lose weight
-2. Maintain weight
-3. Gain weight
-
-Choose (1-3): """)
-        while goal not in [1, 2, 3]:
-            goal = int(input("""
-What is your goal?
-
-1. Lose weight
-2. Maintain weight
-3. Gain weight
-
-Choose (1-3): """)) 
-        userstat = cls(
-            name = name,
-            weight = weight,
-            height = height,
-            age = age,
-            sex = sex, 
-            goal = goal,
-            workout = workout
-        )
-        
-        currentuser = userstat
-        return userstat
-        
-    @staticmethod
-    def activity():
-        n = 0
-        while n not in [1,2,3,4,5]:
-            n = input_int("""
-            How active are you?
-                
-            1. Sedentary
-            Little or no exercise
-                
-            2. Lightly active
-            Light exercise 1-3 days/week
-                
-            3. Moderately active
-            Moderate exercise 3-5 days/week
-                
-            4. Very active
-            Hard exercise 6-7 days/week
-                
-            5. Extra active
-            Very hard exercise / physical job
-                
-            Choose (1-5): 
-            """)
-        if n == 1: 
-            return 1.2
-        elif n == 2:
-            return 1.375
-        elif n == 3:
-            return 1.55
-        elif n == 4: 
-            return 1.725
-        elif n ==5:
-            return 1.9       
+        ) 
     def bmr(self):
         if self.sex == "male":
             bmrscore = 10*self.weight + 6.25*self.height - 5*self.age + 5
@@ -250,9 +170,48 @@ Choose (1-3): """))
         elif self.goal == 3:
             proteinneeded = self.weight * 1.6
         return proteinneeded
+def read_foods():
+    try:
+        with open("fooddatabase.json", "r") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
 
-    
- 
+def foods_in_use():
+    """Tên các món đang xuất hiện trong log.json."""
+    try:
+        with open("log.json", "r") as f:
+            logs = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return set()
+    return {log["name"] for log in logs}
+
+def delete_food(name):
+    database = read_foods()
+    if name not in database:
+        raise ValueError(f"Không tìm thấy món '{name}'")
+    if name in foods_in_use():
+        raise ValueError(f"'{name}' đang được dùng trong nhật ký ăn, không thể xóa")
+    del database[name]
+    with open("fooddatabase.json", "w") as f:
+        json.dump(database, f, indent=4)
+   
+def add_food(name, protein, carb, fat):
+    name = name.strip()
+    if name == "":
+        raise ValueError("Tên món không được để trống")
+    checks = [
+        0 <= protein <= 10000,
+        0 <= carb <= 10000,
+        0 <= fat <= 10000
+    ]
+    if not all(checks):
+        raise ValueError("protein/carb/fat phải trong khoảng 0 đến 10000")
+    with open("fooddatabase.json", "r") as f:
+        database = json.load(f)
+    database[name] = {"protein": protein, "carb": carb, "fat": fat}
+    with open("fooddatabase.json", "w") as f:
+        json.dump(database, f, indent=4)
 #save/load       
 def save_entry(newentry):
     try:
@@ -283,28 +242,17 @@ def load_entry():
         newentries.append(newentry)
     return newentries
 
-def save_user(userstat):
+def save_user(u):
     with open("personstat.json", "w") as f:
-        json.dump(user.todict(userstat), f, indent = 4)
+        json.dump(user.todict(u), f, indent = 4)
 def load_user():
-    global currentuser
     try: 
         with open("personstat.json", "r") as f:
             data = json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
-        print("no save file found")
-        newuser = user.stat()
-        return newuser
+        return None
     newuser = user.fromdict(data)
-    currentuser = newuser
     return newuser
-#subeditmeal()
-def searchandprint(datelogs, mealtype):
-    count = -1
-    for i,log in enumerate(datelogs):
-        count += 1
-        if log["mealtype"] == mealtype:
-            print(count,log)
 def editmealmenu():
     while True:
         print("""
@@ -331,15 +279,6 @@ def editmeal():
     while n == False:
         date_logs.sort(key = lambda log: log["mealtype"])
         print("Breakfast: ")
-        searchandprint(date_logs, "breakfast")
-        print("Lunch: ")
-        searchandprint(date_logs, "lunch")
-        print("Afternoon snack")
-        searchandprint(date_logs, "afternoon snack")
-        print("Dinner")
-        searchandprint(date_logs, "dinner")
-        print("late snack")
-        searchandprint(date_logs, "late snack")
         while True:
             usermeal = input_int(f"choose a number or choose {len(date_logs)} to save and exit: ")
             if usermeal == len(date_logs):
@@ -385,15 +324,6 @@ def deletemeal():
     while n == False:
         date_logs.sort(key = lambda log: log["mealtype"])
         print("Breakfast: ")
-        searchandprint(date_logs, "breakfast")
-        print("Lunch: ")
-        searchandprint(date_logs, "lunch")
-        print("Afternoon snack")
-        searchandprint(date_logs, "afternoon snack")
-        print("Dinner")
-        searchandprint(date_logs, "dinner")
-        print("late snack")
-        searchandprint(date_logs, "late snack")
         while True:
             usermeal = input_int(f"choose a number to delete or choose {len(date_logs)} to save and exit: ")
             if usermeal == len(date_logs):
@@ -429,9 +359,9 @@ def input_int(message):
         except ValueError:
             print("invalid number")
 #showing, printing
-def viewlog(loglist):
-    caloriesneeded = currentuser.caloriesadvice()
-    proteineeded = currentuser.proteinadvice()
+def viewlog(loglist,u):
+    caloriesneeded = u.caloriesadvice()
+    proteineeded = u.proteinadvice()
     protein = 0
     calories = 0
     if len(loglist) == 0:
@@ -469,30 +399,12 @@ def searchlogbydate():
             if log["date"] == userdatestr:
                 logs.append(log)
         return logs
-def printlog(date_logs):
-    if not date_logs:
-        print("no log found that day")
-        return
-    datetoobject = entry.datetoobject(date_logs[0]["date"])
-    print(f"date: {datetoobject}")
-    date_logs.sort(key = lambda log: log["mealtype"])
-    print("Breakfast: ")
-    searchandprint(date_logs, "breakfast")
-    print("Lunch: ")
-    searchandprint(date_logs, "lunch")
-    print("Afternoon snack")
-    searchandprint(date_logs, "afternoon snack")
-    print("Dinner")
-    searchandprint(date_logs, "dinner")
-    print("late snack")
-    searchandprint(date_logs, "late snack")
-def viewuserstat():
-    global currentuser
-    print(f"Name: {currentuser.name}")
-    print(f"Age: {currentuser.age}")
-    print(f"Weight: {currentuser.weight} kg")
-    print(f"Height: {currentuser.height} cm")
-    print(f"Sex: {currentuser.sex}")
+def viewuserstat(u):
+    print(f"Name: {u.name}")
+    print(f"Age: {u.age}")
+    print(f"Weight: {u.weight} kg")
+    print(f"Height: {u.height} cm")
+    print(f"Sex: {u.sex}")
     activity_levels = {
     1.2: "Sedentary",
     1.375: "Lightly active",
@@ -500,9 +412,9 @@ def viewuserstat():
     1.725: "Very active",
     1.9: "Extra active",
     } 
-    print(f"Activity level: {activity_levels[currentuser.workout]}")
+    print(f"Activity level: {activity_levels[u.workout]}")
     goal_map = {1: "Lose weight", 2: "Maintain weight", 3: "Gain weight"}
-    print(f"Goal: {goal_map[currentuser.goal]}")
+    print(f"Goal: {goal_map[u.goal]}")
 def mealmenu():
     print("""================================
           MANAGE MEALS
@@ -526,7 +438,7 @@ def mealmenu():
         return
     else:
         print("invalid choice")
-def show_menu():
+def show_menu(u):
     goal_map = {1: "Lose weight", 2: "Maintain weight", 3: "Gain weight"}
     time = date.today()
 
@@ -534,9 +446,9 @@ def show_menu():
           CALORIES TRACKER 
 ========================================
  Day: {time}
- User: {currentuser.name}
- Goal: {goal_map[currentuser.goal]}
- Target: {currentuser.caloriesadvice():.0f} kcal
+ User: {u.name}
+ Goal: {goal_map[u.goal]}
+ Target: {u.caloriesadvice():.0f} kcal
 ---------------------------------------- 
   1. Manage meal 
   2. Today's log 
@@ -592,30 +504,6 @@ def nutrientnumpy():
     else:
         udays = int(udays)
     return subnutrientnumpy(udays, logchart, dtb)
-def nutrientdescribe():
-    nt, ymean,zstd,qcv,logchart = nutrientnumpy()
-    return nt.describe()
-def chartstatsum(unit):
-    nt, ymean, zstd, qcv = nutrientnumpy()
-    plt.plot(nt.index.to_timestamp(), nt[unit])
-    plt.title("Sum calo chart")
-    plt.xlabel("Time")
-    plt.ylabel("Calories")
-    plt.show()
-def chartstatmean(unit):
-    nt, ymean, zstd, qcv = nutrientnumpy()
-    plt.plot(ymean.index.to_timestamp(), ymean[unit])
-    plt.title("Sum calo chart")
-    plt.xlabel("Time")
-    plt.ylabel("Calories")
-    plt.show()
-def chartstatstd(unit):
-    nt, ymean, zstd, qcv = nutrientnumpy()
-    plt.plot(zstd.index.to_timestamp(), zstd[unit])
-    plt.title("Sum calo chart")
-    plt.xlabel("Time")
-    plt.ylabel("Calories")
-    plt.show()
 def chooseunit():
     units = {1: "protein", 2: "carb", 3: "fat", 4: "calories"}
     while True:
@@ -713,7 +601,7 @@ def statnumpy():
             return
         else:
             print("invalid")
-def main():
+def main(u):
     load_user()
     while True:
         show_menu()
@@ -724,7 +612,6 @@ def main():
             viewlog(log_today)
         elif userchoice == 3:
             logs = searchlogbydate()
-            printlog(logs)
         elif userchoice == 4:
             viewuserstat()
         elif userchoice == 5:
@@ -732,9 +619,10 @@ def main():
         elif userchoice == 6:
             statnumpy()
         elif userchoice == 7:
-            save_user(currentuser)
+            save_user(u)
             save_entry(log_today)
             exit()
         else:
             print('invalid')
-main()
+if __name__ == "__main__":
+    main()
