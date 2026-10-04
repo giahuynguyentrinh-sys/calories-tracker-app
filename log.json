@@ -9778,5 +9778,11 @@
         "date": "20260915",
         "weight": 100.0,
         "mealtype": "breakfast"
+    },
+    {
+        "name": "banana",
+        "date": "20261004",
+        "weight": 100.0,
+        "mealtype": "lunch"
     }
 ]

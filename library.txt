@@ -2,3 +2,11 @@ matplotib thư viện chart
 numpy thư viện tính toán
 panda thư viện gom số liệu, thống kê vào 1 bảng
 pandaAI thư viện pull API, send API.
+
+
+Khung app.py + sidebar chuyển trang (chưa có nội dung)
+Trang 5 Thống kê (bạn đã có logic, chỉ đọc dữ liệu)
+Trang 3 Nhật ký hôm nay (chỉ đọc)
+Trang 1 Hồ sơ (cần trước để trang 3 có mục tiêu)
+Trang 6 và 2 (bắt đầu ghi dữ liệu)
+Trang 4 Sửa/Xóa (khó nhất, để cuối)
